@@ -15,21 +15,37 @@ function delay(ms) {
  * @returns {Promise<Object>} 商品資訊
  */
 async function fetchProductInfo(productCode) {
-  try {
-    const url = `${config.momo.baseUrl}?i_code=${productCode}`;
+  const maxRetries = 3;
+  let lastError;
 
-    console.log(`[Scraper] 抓取商品: ${productCode}`);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const url = `${config.momo.baseUrl}?i_code=${productCode}`;
 
-    const response = await axios.get(url, {
-      headers: {
-        'User-Agent': config.momo.userAgent,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
-      },
-      timeout: 30000,
-    });
+      console.log(`[Scraper] 抓取商品: ${productCode} (嘗試 ${attempt}/${maxRetries})`);
 
-    const $ = cheerio.load(response.data);
+      const response = await axios.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+          'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+          'Sec-Ch-Ua-Mobile': '?0',
+          'Sec-Ch-Ua-Platform': '"Windows"',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+          'Sec-Fetch-User': '?1',
+          'Upgrade-Insecure-Requests': '1',
+        },
+        timeout: 60000, // 增加到 60 秒
+        maxRedirects: 5,
+      });
+
+      const $ = cheerio.load(response.data);
 
     // 嘗試多種可能的價格選擇器
     let price = null;
@@ -105,10 +121,20 @@ async function fetchProductInfo(productCode) {
       timestamp: new Date().toISOString(),
     };
 
-  } catch (error) {
-    console.error(`[Scraper] 抓取商品 ${productCode} 失敗:`, error.message);
-    throw error;
+    } catch (error) {
+      lastError = error;
+      console.error(`[Scraper] 嘗試 ${attempt}/${maxRetries} 失敗:`, error.message);
+
+      if (attempt < maxRetries) {
+        const waitTime = attempt * 5000; // 每次重試等待時間增加
+        console.log(`[Scraper] 等待 ${waitTime / 1000} 秒後重試...`);
+        await delay(waitTime);
+      }
+    }
   }
+
+  console.error(`[Scraper] 抓取商品 ${productCode} 失敗，已重試 ${maxRetries} 次`);
+  throw lastError;
 }
 
 /**

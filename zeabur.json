@@ -1,0 +1,6 @@
+{
+  "name": "momo-price-tracker",
+  "build": {
+    "type": "nodejs"
+  }
+}

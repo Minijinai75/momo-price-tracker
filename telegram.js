@@ -21,8 +21,8 @@ function initBot(enableWebhook = false) {
       bot.setWebHook(`${config.server.webhookUrl}${webhookPath}`);
       console.log(`[Telegram] Bot 已初始化 (Webhook 模式): ${config.server.webhookUrl}${webhookPath}`);
     } else {
-      // Polling 模式（本地開發使用）
-      bot = new TelegramBot(config.telegram.botToken, { polling: false });
+      // Polling 模式（本地開發或無 webhook URL 時使用）
+      bot = new TelegramBot(config.telegram.botToken, { polling: true });
       console.log('[Telegram] Bot 已初始化 (Polling 模式)');
     }
   }
