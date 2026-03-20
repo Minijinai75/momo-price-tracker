@@ -18,7 +18,10 @@ module.exports = {
 
   server: {
     port: process.env.PORT || 3000,
-    webhookUrl: process.env.WEBHOOK_URL, // Zeabur 自動提供的網址
+    // Zeabur 會自動設定 ZEABUR_WEB_URL，我們優先使用它
+    webhookUrl: process.env.WEBHOOK_URL || process.env.ZEABUR_WEB_URL || '',
+    // 檢測是否在雲端環境運行（Zeabur, Railway, Render 等）
+    isCloud: !!(process.env.ZEABUR_WEB_URL || process.env.RAILWAY_STATIC_URL || process.env.RENDER_EXTERNAL_URL || process.env.DYNO || process.env.PORT),
   },
 
   data: {

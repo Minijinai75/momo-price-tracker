@@ -14,14 +14,26 @@ function initBot(enableWebhook = false) {
   }
 
   if (!bot) {
-    if (enableWebhook && config.server.webhookUrl) {
-      // Webhook 模式（用於 Zeabur 等雲端平台）
+    // 雲端環境必須使用 webhook 模式，避免多實例衝突
+    const isCloudEnvironment = config.server.isCloud;
+    const hasWebhookUrl = !!config.server.webhookUrl;
+
+    if (isCloudEnvironment) {
+      // 雲端環境：使用 webhook 模式
       bot = new TelegramBot(config.telegram.botToken);
-      const webhookPath = `/telegram-webhook`;
-      bot.setWebHook(`${config.server.webhookUrl}${webhookPath}`);
-      console.log(`[Telegram] Bot 已初始化 (Webhook 模式): ${config.server.webhookUrl}${webhookPath}`);
+
+      if (hasWebhookUrl) {
+        const webhookPath = `/telegram-webhook`;
+        bot.setWebHook(`${config.server.webhookUrl}${webhookPath}`);
+        console.log(`[Telegram] Bot 已初始化 (Webhook 模式): ${config.server.webhookUrl}${webhookPath}`);
+      } else {
+        // 雲端環境但沒有 webhook URL，先清除之前的 webhook，然後等待設定
+        bot.deleteWebHook();
+        console.log('[Telegram] Bot 已初始化 (雲端模式，等待 webhook 設定)');
+        console.log('[Telegram] 請在環境變數中設定 WEBHOOK_URL 或確保 ZEABUR_WEB_URL 可用');
+      }
     } else {
-      // Polling 模式（本地開發或無 webhook URL 時使用）
+      // 本地環境：使用 polling 模式
       bot = new TelegramBot(config.telegram.botToken, { polling: true });
       console.log('[Telegram] Bot 已初始化 (Polling 模式)');
     }

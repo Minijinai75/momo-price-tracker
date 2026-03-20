@@ -113,11 +113,12 @@ async function start() {
     console.warn('你可以透過 Telegram Bot 命令 /add 來新增商品');
   }
 
-  // 判斷是否使用 webhook 模式
-  const useWebhook = !!config.server.webhookUrl;
+  // 判斷是否在雲端環境
+  const isCloud = config.server.isCloud;
+  const hasWebhookUrl = !!config.server.webhookUrl;
 
   // 初始化 Telegram Bot
-  const bot = telegram.initBot(useWebhook);
+  const bot = telegram.initBot(isCloud);
 
   if (!bot) {
     console.error('❌ Telegram Bot 初始化失敗');
@@ -125,8 +126,8 @@ async function start() {
   }
 
   // 設定 Telegram 命令處理器
-  if (useWebhook) {
-    // Webhook 模式（Zeabur 部署）
+  if (isCloud) {
+    // 雲端環境：使用 webhook 模式，啟動 HTTP 伺服器
     app.post('/telegram-webhook', (req, res) => {
       bot.processUpdate(req.body);
       res.sendStatus(200);
@@ -142,13 +143,27 @@ async function start() {
       });
     });
 
+    // 首頁端點
+    app.get('/', (req, res) => {
+      res.json({
+        name: 'Momo Price Tracker',
+        status: 'running',
+        webhookUrl: hasWebhookUrl ? `${config.server.webhookUrl}/telegram-webhook` : 'not configured',
+      });
+    });
+
     // 啟動 HTTP 伺服器
     app.listen(config.server.port, () => {
       console.log(`[Server] HTTP 伺服器已啟動於端口 ${config.server.port}`);
-      console.log(`[Server] Webhook URL: ${config.server.webhookUrl}/telegram-webhook`);
+      if (hasWebhookUrl) {
+        console.log(`[Server] Webhook URL: ${config.server.webhookUrl}/telegram-webhook`);
+      } else {
+        console.log(`[Server] ⚠️ 警告: 未設定 WEBHOOK_URL，Bot 命令可能無法運作`);
+        console.log(`[Server] 請在 Zeabur 環境變數中設定 WEBHOOK_URL 為你的服務域名`);
+      }
     });
   } else {
-    // Polling 模式（本地開發）
+    // 本地環境：使用 Polling 模式
     console.log('[Telegram] 使用 Polling 模式監聽命令');
   }
 
